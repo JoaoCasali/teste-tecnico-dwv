@@ -16,7 +16,14 @@ defmodule Qualificador.Pedido do
     :perfil
   ]
 
-  @criterios [:cidade, :dormitorios_min, :suites_min, :orcamento_max, :entrega_max, :posicoes]
+  @criterios [
+    cidade: "cidade",
+    dormitorios_min: "dormitórios",
+    suites_min: "suítes",
+    orcamento_max: "orçamento",
+    entrega_max: "prazo de entrega",
+    posicoes: "posição"
+  ]
 
   @comodos_max 10
   @orcamento_min 50_000
@@ -120,6 +127,24 @@ defmodule Qualificador.Pedido do
   O perfil só influencia a ordenação, então sozinho não conta.
   """
   def util?(%__MODULE__{} = pedido) do
-    Enum.any?(@criterios, &(Map.fetch!(pedido, &1) not in [nil, []]))
+    criterios_informados(pedido) != []
+  end
+
+  @doc """
+  Nomes legíveis dos critérios que o pedido informou.
+  """
+  def criterios_informados(%__MODULE__{} = pedido) do
+    for {campo, nome} <- @criterios, Map.fetch!(pedido, campo) not in [nil, []], do: nome
+  end
+
+  @doc """
+  Junta nomes em uma enumeração: `["a", "b", "c"]` vira `"a, b e c"`.
+  """
+  def enumerar([]), do: ""
+  def enumerar([unico]), do: unico
+
+  def enumerar(nomes) do
+    {inicio, [ultimo]} = Enum.split(nomes, -1)
+    Enum.join(inicio, ", ") <> " e " <> ultimo
   end
 end

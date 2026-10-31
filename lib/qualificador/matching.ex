@@ -20,6 +20,13 @@ defmodule Qualificador.Matching do
 
   @nome_posicao %{frente_mar: "Frente mar", quadra_mar: "Quadra mar", interna: "Interna"}
 
+  @nome_destaque [
+    area: "maior área",
+    preco_m2: "menor preço por m²",
+    entrega: "entrega mais próxima",
+    posicao: "melhor posição"
+  ]
+
   @doc """
   Devolve até 3 opções, da mais aderente para a menos aderente.
 
@@ -42,7 +49,7 @@ defmodule Qualificador.Matching do
     |> Enum.sort_by(&{-&1.pontuacao, &1.empreendimento.id})
     |> Enum.uniq_by(& &1.empreendimento.id)
     |> Enum.take(@limite)
-    |> Enum.map(&Map.put(&1, :justificativa, justificar(&1, pedido.perfil)))
+    |> Enum.map(&Map.put(&1, :justificativa, justificar(&1, pedido, referencia)))
   end
 
   # Cada tipologia é avaliada inteira, para não combinar os dormitórios de uma
@@ -91,13 +98,29 @@ defmodule Qualificador.Matching do
   defp referencia([]), do: nil
 
   defp referencia(candidatos) do
-    entregas = Enum.map(candidatos, fn {empreendimento, _} -> empreendimento.entrega end)
+    {menor_area, maior_area} =
+      candidatos |> Enum.map(fn {_, t} -> t.area_m2 end) |> Enum.min_max()
+
+    {menor_preco_m2, maior_preco_m2} =
+      candidatos |> Enum.map(fn {_, t} -> preco_m2(t) end) |> Enum.min_max()
+
+    {pior_posicao, melhor_posicao} =
+      candidatos
+      |> Enum.map(fn {e, _} -> Map.fetch!(@valor_posicao, e.posicao) end)
+      |> Enum.min_max()
+
+    {primeira_entrega, ultima_entrega} =
+      candidatos |> Enum.map(fn {e, _} -> e.entrega end) |> Enum.min_max()
 
     %{
-      maior_area: candidatos |> Enum.map(fn {_, t} -> t.area_m2 end) |> Enum.max(),
-      menor_preco_m2: candidatos |> Enum.map(fn {_, t} -> preco_m2(t) end) |> Enum.min(),
-      primeira_entrega: Enum.min(entregas),
-      ultima_entrega: Enum.max(entregas)
+      menor_area: menor_area,
+      maior_area: maior_area,
+      menor_preco_m2: menor_preco_m2,
+      maior_preco_m2: maior_preco_m2,
+      pior_posicao: pior_posicao,
+      melhor_posicao: melhor_posicao,
+      primeira_entrega: primeira_entrega,
+      ultima_entrega: ultima_entrega
     }
   end
 
@@ -136,7 +159,11 @@ defmodule Qualificador.Matching do
 
   defp preco_m2(tipologia), do: tipologia.preco / tipologia.area_m2
 
-  defp justificar(%{empreendimento: empreendimento, tipologia: tipologia}, perfil) do
+  defp justificar(opcao, pedido, referencia) do
+    dados(opcao, pedido.perfil) <> motivo(opcao, pedido, referencia)
+  end
+
+  defp dados(%{empreendimento: empreendimento, tipologia: tipologia}, perfil) do
     base =
       "#{Map.fetch!(@nome_posicao, empreendimento.posicao)} em #{empreendimento.cidade} " <>
         "(#{empreendimento.bairro}): #{tipologia.dormitorios} dorm., " <>
@@ -147,6 +174,75 @@ defmodule Qualificador.Matching do
       :investimento -> base <> ", #{formatar_preco(round(preco_m2(tipologia)))}/m²"
       _ -> base
     end
+  end
+
+  defp motivo(opcao, pedido, referencia) do
+    atende =
+      case Pedido.criterios_informados(pedido) do
+        [] -> ""
+        criterios -> ". Atende a #{Pedido.enumerar(criterios)}"
+      end
+
+    destaques =
+      case destaques(opcao, pedido.perfil, referencia) do
+        [] -> ""
+        lista -> "; destaque: #{Pedido.enumerar(lista)} entre as opções compatíveis"
+      end
+
+    atende <> destaques
+  end
+
+  # Só cita o que é verdade para esta opção, e só os fatores que pesam no perfil.
+  defp destaques(%{empreendimento: empreendimento, tipologia: tipologia}, perfil, referencia) do
+    pesos = Map.fetch!(@pesos, perfil)
+
+    for {fator, nome} <- @nome_destaque,
+        Map.has_key?(pesos, fator),
+        melhor_em?(fator, empreendimento, tipologia, referencia) do
+      nome
+    end
+  end
+
+  # Em empate geral, ninguém se destaca.
+  defp melhor_em?(:area, _empreendimento, _tipologia, %{maior_area: igual, menor_area: igual}) do
+    false
+  end
+
+  defp melhor_em?(:preco_m2, _empreendimento, _tipologia, %{
+         menor_preco_m2: igual,
+         maior_preco_m2: igual
+       }) do
+    false
+  end
+
+  defp melhor_em?(:posicao, _empreendimento, _tipologia, %{
+         melhor_posicao: igual,
+         pior_posicao: igual
+       }) do
+    false
+  end
+
+  defp melhor_em?(:entrega, _empreendimento, _tipologia, %{
+         primeira_entrega: igual,
+         ultima_entrega: igual
+       }) do
+    false
+  end
+
+  defp melhor_em?(:area, _empreendimento, tipologia, referencia) do
+    tipologia.area_m2 == referencia.maior_area
+  end
+
+  defp melhor_em?(:preco_m2, _empreendimento, tipologia, referencia) do
+    preco_m2(tipologia) == referencia.menor_preco_m2
+  end
+
+  defp melhor_em?(:posicao, empreendimento, _tipologia, referencia) do
+    Map.fetch!(@valor_posicao, empreendimento.posicao) == referencia.melhor_posicao
+  end
+
+  defp melhor_em?(:entrega, empreendimento, _tipologia, referencia) do
+    empreendimento.entrega == referencia.primeira_entrega
   end
 
   defp formatar_preco(preco) when preco >= 1_000_000 do

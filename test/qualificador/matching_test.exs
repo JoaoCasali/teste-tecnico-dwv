@@ -88,13 +88,37 @@ defmodule Qualificador.MatchingTest do
       assert Matching.buscar(pedido, catalogo) == Matching.buscar(pedido, Enum.reverse(catalogo))
     end
 
-    test "justificativa traz os dados da tipologia escolhida", %{catalogo: catalogo} do
+    test "justificativa traz os dados e o motivo da escolha", %{catalogo: catalogo} do
       pedido = %Pedido{cidade: "Itapema", dormitorios_min: 3, orcamento_max: 2_500_000}
       [primeiro | _] = Matching.buscar(pedido, catalogo)
 
       assert primeiro.justificativa ==
                "Frente mar em Itapema (Meia Praia): 3 dorm., 3 suíte(s), 142 m², " <>
-                 "R$ 2,35 mi, entrega 2027"
+                 "R$ 2,35 mi, entrega 2027. Atende a cidade, dormitórios e orçamento; " <>
+                 "destaque: maior área e melhor posição entre as opções compatíveis"
+    end
+
+    test "só destaca o que é verdade para a opção", %{catalogo: catalogo} do
+      pedido = %Pedido{
+        cidade: "Balneário Camboriú",
+        dormitorios_min: 2,
+        orcamento_max: 1_200_000,
+        perfil: :investimento
+      }
+
+      [primeiro, segundo] = Matching.buscar(pedido, catalogo)
+
+      assert primeiro.justificativa =~
+               "destaque: menor preço por m² e entrega mais próxima entre as opções compatíveis"
+
+      refute segundo.justificativa =~ "destaque"
+      assert segundo.justificativa =~ "Atende a cidade, dormitórios e orçamento"
+    end
+
+    test "sem critério informado, não cita o que atende", %{catalogo: catalogo} do
+      [primeiro | _] = Matching.buscar(%Pedido{perfil: :moradia}, catalogo)
+
+      refute primeiro.justificativa =~ "Atende"
     end
 
     test "justificativa de investimento inclui o preço por m²", %{catalogo: catalogo} do
