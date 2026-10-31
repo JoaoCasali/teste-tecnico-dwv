@@ -4,20 +4,21 @@ defmodule Qualificador.LLMTest do
   alias Qualificador.LLM
   alias Qualificador.LLM.{Anthropic, Fake}
 
-  # Substitui o HTTP do Req: nada aqui toca a rede.
-  defp responder(status, corpo) do
-    teste = self()
-
-    fn requisicao ->
-      send(teste, {:requisicao, requisicao})
-      {requisicao, Req.Response.new(status: status, body: corpo)}
+  # Substitui o HTTP do Req: nada aqui toca a rede. O Req roda o adapter no
+  # processo do teste, então o dicionário de processo basta para combinar a resposta.
+  defmodule HttpFixo do
+    def run(requisicao) do
+      send(self(), {:requisicao, requisicao})
+      {requisicao, Process.get(:resposta_http)}
     end
   end
 
   defp completar(status, corpo) do
+    Process.put(:resposta_http, Req.Response.new(status: status, body: corpo))
+
     Anthropic.completar("sistema", "texto",
       api_key: "chave-de-teste",
-      req_options: [adapter: responder(status, corpo)]
+      req_options: [adapter: HttpFixo]
     )
   end
 
@@ -43,6 +44,11 @@ defmodule Qualificador.LLMTest do
       assert_received {:requisicao, requisicao}
       assert Req.Request.get_header(requisicao, "x-api-key") == ["chave-de-teste"]
       assert requisicao.options.receive_timeout == 30_000
+
+      assert %{
+               "system" => "sistema",
+               "messages" => [%{"role" => "user", "content" => "texto"}]
+             } = requisicao.body |> IO.iodata_to_binary() |> Jason.decode!()
     end
 
     test "sem chave não faz requisição" do
@@ -63,12 +69,10 @@ defmodule Qualificador.LLMTest do
     end
 
     test "falha de rede vira {:error, motivo}" do
-      falha = fn requisicao ->
-        {requisicao, %Req.TransportError{reason: :timeout}}
-      end
+      Process.put(:resposta_http, %Req.TransportError{reason: :timeout})
 
       assert {:error, {:rede, _mensagem}} =
-               Anthropic.completar("s", "t", api_key: "x", req_options: [adapter: falha])
+               Anthropic.completar("s", "t", api_key: "x", req_options: [adapter: HttpFixo])
     end
   end
 

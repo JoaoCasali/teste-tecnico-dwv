@@ -21,7 +21,7 @@ defmodule Qualificador.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:req, "~> 0.5"},
+      {:req, "~> 0.7"},
       {:jason, "~> 1.4"}
     ]
   end
