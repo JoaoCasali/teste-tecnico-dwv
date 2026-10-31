@@ -84,7 +84,10 @@ Para refinar a busca, informe também: prazo de entrega.
 
 ## Uso de IA
 
-**Ferramenta:** Claude Code (Claude Opus 5.5), no aplicativo desktop. A IA fez o plano, escreveu o código e os testes e rodou os commits. O condutor do teste decidiu o rumo, criou o repositório e definiu a linguagem e o trabalho sem chave de API.
+Pela minha falta de conhecimento em Elixir, a produção do código foi inteiramente por conta da IA.
+Desse modo, a escrita e revisão do Plano foi feita por mim (com auxilio do Chat GPT).
+
+**Ferramenta:** Claude Code (Claude Opus 5.5), no aplicativo desktop. Escreveu o código e os testes e rodou os commits. O condutor do teste decidiu o rumo, criou o repositório e definiu a linguagem e o trabalho sem chave de API.
 
 **Como o resultado foi validado:** os resultados esperados dos pedidos foram calculados a partir do catálogo e gravados no `PLAN.md` antes do código, e os testes verificam esses valores. A mix task também foi executada de verdade nos pedidos de exemplo e nos casos de erro.
 
