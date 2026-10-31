@@ -35,8 +35,10 @@ mix qualificar "tem algo 2 dorms em BC até 1.2? investidor, quer pra temporada"
 Saída do exemplo com `--fake`:
 
 ```text
-1. Vista Atlântica: Quadra mar em Balneário Camboriú (Centro): 2 dorm., 1 suíte(s), 78 m², R$ 1,15 mi, entrega 2026, R$ 14,74 mil/m²
-2. Studio Pioneiros: Quadra mar em Balneário Camboriú (Pioneiros): 2 dorm., 1 suíte(s), 71 m², R$ 1,19 mi, entrega 2027, R$ 16,76 mil/m²
+1. Vista Atlântica: Quadra mar em Balneário Camboriú (Centro): 2 dorm., 1 suíte(s), 78 m², R$ 1,15 mi, entrega 2026, R$ 14,74 mil/m². Atende: cidade, dormitórios e orçamento; destaque: menor preço por m² e entrega mais próxima entre as opções compatíveis
+2. Studio Pioneiros: Quadra mar em Balneário Camboriú (Pioneiros): 2 dorm., 1 suíte(s), 71 m², R$ 1,19 mi, entrega 2027, R$ 16,76 mil/m². Atende: cidade, dormitórios e orçamento
+
+Para refinar a busca, informe também: prazo de entrega.
 ```
 
 ## Estrutura
@@ -61,7 +63,8 @@ Saída do exemplo com `--fake`:
 - **Critério útil:** o perfil só influencia a ordenação, então um pedido só com perfil gera um pedido de mais informação.
 - **Validação em faixas plausíveis:** dormitórios e suítes de 0 a 10, orçamento de R$ 50 mil a R$ 100 milhões, entrega entre o ano atual e o atual + 15. Um orçamento de `1.2` vira erro, em vez de buscar imóveis de R$ 1,20.
 - **Modo fake explícito:** `--fake` precisa ser pedido. Sem chave e sem a flag, o comando falha, para que uma resposta escrita à mão nunca passe por uma resposta real.
-- **Justificativa por template:** usa dados reais da tipologia, sem custo de LLM e sem risco de inventar informação.
+- **Justificativa por template:** usa dados reais da tipologia, sem custo de LLM e sem risco de inventar informação. Cita os critérios atendidos e só destaca um fator se a opção for de fato a melhor nele, sem contar empate geral.
+- **Pedido incompleto:** quem informa só o orçamento recebe opções e um aviso de quais critérios refinariam a busca. O pedido de mais informação fica para quando não há nenhum critério útil.
 - **HTTP direto com `Req`:** não há SDK oficial da Anthropic para Elixir.
 - **Fallback de recusa:** o adapter envia `fallbacks: "default"`, com o header beta correspondente. Esse trecho também não foi testado na API real.
 
@@ -78,7 +81,6 @@ Saída do exemplo com `--fake`:
 2. Criar um teste `@tag :live` e um conjunto de avaliação com mais gírias e abreviações.
 3. Adicionar retry para erros 429 e 5xx, além de cache de extrações repetidas.
 4. Revisar os pesos do ranking com alguém que conheça o mercado, porque os atuais são uma escolha inicial minha.
-5. Explicar no resultado quando faltam critérios, como no pedido "apto grande", em que o tamanho não vira filtro.
 
 ## Uso de IA
 
@@ -94,6 +96,8 @@ Saída do exemplo com `--fake`:
 - **Instalação:** não previu que a instalação silenciosa do `winget` deixaria Erlang e Elixir fora do PATH.
 - **Versão gerada:** o `mix new` gerou `elixir: "~> 1.20"`, mais restritivo que o enunciado. Foi trocado por `~> 1.15`.
 - **Dependência:** pediu `req ~> 0.5` e os testes usaram um adapter em forma de função, que o Req 0.7 marca como depreciado. Os testes passaram a usar um módulo, e a dependência virou `~> 0.7`.
+- **Justificativa fraca:** a primeira versão só descrevia o imóvel, sem dizer por que ele foi escolhido, e o pedido incompleto não avisava que a busca estava ampla. A revisão do enunciado apontou os dois pontos, corrigidos nos commits `fix:`.
+- **Destaque enganoso:** a nova justificativa dizia "melhor posição" mesmo quando todas as opções empatavam, e a ordem dos destaques dependia da ordem interna de um mapa. Os testes escritos com a saída esperada pegaram os dois problemas antes do commit.
 - **Compatibilidade não testada:** o `mix.exs` declara Elixir 1.15+, mas o projeto só rodou com 1.20.4 e OTP 29.
 
 **O que não foi validado:** a qualidade do prompt e o contrato real da API, como explicado em [Limitação importante](#limitação-importante).
