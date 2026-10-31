@@ -94,7 +94,7 @@ defmodule Qualificador.MatchingTest do
 
       assert primeiro.justificativa ==
                "Frente mar em Itapema (Meia Praia): 3 dorm., 3 suíte(s), 142 m², " <>
-                 "R$ 2,35 mi, entrega 2027. Atende a cidade, dormitórios e orçamento; " <>
+                 "R$ 2,35 mi, entrega 2027. Atende: cidade, dormitórios e orçamento; " <>
                  "destaque: maior área e melhor posição entre as opções compatíveis"
     end
 
@@ -112,7 +112,7 @@ defmodule Qualificador.MatchingTest do
                "destaque: menor preço por m² e entrega mais próxima entre as opções compatíveis"
 
       refute segundo.justificativa =~ "destaque"
-      assert segundo.justificativa =~ "Atende a cidade, dormitórios e orçamento"
+      assert segundo.justificativa =~ "Atende: cidade, dormitórios e orçamento"
     end
 
     test "sem critério informado, não cita o que atende", %{catalogo: catalogo} do

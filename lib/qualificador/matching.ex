@@ -180,7 +180,7 @@ defmodule Qualificador.Matching do
     atende =
       case Pedido.criterios_informados(pedido) do
         [] -> ""
-        criterios -> ". Atende a #{Pedido.enumerar(criterios)}"
+        criterios -> ". Atende: #{Pedido.enumerar(criterios)}"
       end
 
     destaques =
