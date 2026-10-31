@@ -25,6 +25,8 @@ defmodule Qualificador.Pedido do
     posicoes: "posição"
   ]
 
+  @principais [:cidade, :dormitorios_min, :orcamento_max, :entrega_max]
+
   @comodos_max 10
   @orcamento_min 50_000
   @orcamento_max 100_000_000
@@ -135,6 +137,15 @@ defmodule Qualificador.Pedido do
   """
   def criterios_informados(%__MODULE__{} = pedido) do
     for {campo, nome} <- @criterios, Map.fetch!(pedido, campo) not in [nil, []], do: nome
+  end
+
+  @doc """
+  Nomes legíveis dos critérios principais que o pedido não informou.
+  """
+  def criterios_faltantes(%__MODULE__{} = pedido) do
+    for {campo, nome} <- @criterios, campo in @principais, Map.fetch!(pedido, campo) == nil do
+      nome
+    end
   end
 
   @doc """

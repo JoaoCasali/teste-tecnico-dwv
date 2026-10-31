@@ -13,6 +13,7 @@ defmodule Mix.Tasks.Qualificar do
   use Mix.Task
 
   alias Qualificador.LLM.Fake
+  alias Qualificador.Pedido
 
   @requirements ["app.config"]
 
@@ -34,16 +35,20 @@ defmodule Mix.Tasks.Qualificar do
     |> imprimir()
   end
 
-  defp imprimir({:ok, []}) do
+  defp imprimir({:ok, %{opcoes: []}}) do
     Mix.shell().info("Nenhum empreendimento do catálogo atende a esse pedido.")
   end
 
-  defp imprimir({:ok, opcoes}) do
+  defp imprimir({:ok, %{opcoes: opcoes, faltantes: faltantes}}) do
     opcoes
     |> Enum.with_index(1)
     |> Enum.each(fn {opcao, posicao} ->
       Mix.shell().info("#{posicao}. #{opcao.empreendimento.nome}: #{opcao.justificativa}")
     end)
+
+    if faltantes != [] do
+      Mix.shell().info("\nPara refinar a busca, informe também: #{Pedido.enumerar(faltantes)}.")
+    end
   end
 
   defp imprimir({:mais_info, mensagem}), do: Mix.shell().info(mensagem)

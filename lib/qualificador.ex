@@ -11,8 +11,9 @@ defmodule Qualificador do
   @doc """
   Executa o fluxo completo: extração, matching e resposta.
 
-  Devolve `{:ok, opcoes}`, em que a lista pode vir vazia se nada atender,
-  `{:mais_info, mensagem}` se o pedido não tiver critério útil ou
+  Devolve `{:ok, %{opcoes: opcoes, faltantes: faltantes}}`, em que `opcoes` pode vir
+  vazia se nada atender e `faltantes` lista os critérios principais que refinariam
+  a busca, `{:mais_info, mensagem}` se o pedido não tiver critério útil ou
   `{:error, motivo}`. Em `opts`, `:catalogo` substitui o catálogo padrão; o resto
   vai para a extração.
   """
@@ -31,7 +32,11 @@ defmodule Qualificador do
   defp responder(pedido, catalogo) do
     if Pedido.util?(pedido) do
       with {:ok, catalogo} <- carregar(catalogo) do
-        {:ok, Matching.buscar(pedido, catalogo)}
+        {:ok,
+         %{
+           opcoes: Matching.buscar(pedido, catalogo),
+           faltantes: Pedido.criterios_faltantes(pedido)
+         }}
       end
     else
       {:mais_info, @mais_info}
